@@ -60,7 +60,7 @@ class ProtonMail(QMainWindow):
             self.webview.page().action(self.webview.page().WebAction.SavePage).setVisible(False)
             self.webview.page().action(self.webview.page().WebAction.ViewSource).setVisible(False)
             self.tray_icon = QSystemTrayIcon()
-            self.tray_icon.setToolTip("ProtonMail")
+            self.tray_icon.setToolTip("ProtonMailView")
             self.tray_icon.setIcon(QIcon("Resources/mail.ico"))
             self.tray_icon.activated.connect(
                 lambda reason: self.show() if reason == QSystemTrayIcon.ActivationReason.DoubleClick else None)
@@ -86,7 +86,7 @@ class ProtonMail(QMainWindow):
     @staticmethod
     def about_page():
         url = "https://github.com/7gxycn08/ProtonMailView"
-        subprocess.Popen(f"start {url}", creationflags=subprocess.CREATE_NO_WINDOW)
+        subprocess.Popen(f"start {url}", shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
 
     def on_download_requested(self, download: QWebEngineDownloadRequest):
         # Prompt the user to select a save location
@@ -105,7 +105,7 @@ class ProtonMail(QMainWindow):
     @staticmethod
     def handle_notification(notification: QWebEngineNotification):
         # Create a notification object
-        noti = Notify(default_notification_application_name="ProtonMail")
+        noti = Notify(default_notification_application_name="ProtonMailView")
 
         # Set the title and message for the notification
         noti.title = notification.title()
