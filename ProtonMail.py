@@ -8,7 +8,6 @@ from PySide6.QtWebEngineCore import (QWebEngineSettings, QWebEngineProfile, QWeb
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QApplication, QMainWindow, QSystemTrayIcon, QMenu, QFileDialog, QTextEdit, QVBoxLayout,
                                QDialog)
-from notifypy import Notify
 import ctypes
 import sys
 
@@ -49,7 +48,7 @@ class ProtonMail(QMainWindow):
 
                 # Call the function
                 set_dpi_aware()  # Now the function can be called correctly
-                
+
             self.setGeometry(450, 200, 900, 600)
             self.setWindowIcon(QIcon('Resources/mail.ico'))
             self.setWindowTitle('ProtonMailView v1.1')
@@ -102,7 +101,6 @@ class ProtonMail(QMainWindow):
             self.tray_icon.setContextMenu(self.tray_menu)
 
             self.tray_icon.show()
-
             self.show()
         except Exception as e:
             traceback.print_exception(e)
@@ -172,26 +170,13 @@ class ProtonMail(QMainWindow):
         event.ignore()
         self.hide()
 
-    @staticmethod
-    def handle_notification(notification: QWebEngineNotification):
-        # Create a notification object
-        noti = Notify(default_notification_application_name="ProtonMailView")
-
-        # Set the title and message for the notification
-        noti.title = notification.title()
-        noti.message = notification.message()
-
-        # Set the urgency level
-        noti.urgency = "normal"
-
-        # Set the path to the notification icon
-        noti.icon = "Resources/mail.ico"
-
-        # Set the timeout for the notification
-        noti.timeout = 5000  # 10 seconds
-
-        # Display the notification
-        noti.send()
+    def handle_notification(self, notification: QWebEngineNotification):
+        self.tray_icon.showMessage(
+            notification.title(),  # Title
+            notification.message(),  # Message
+            QIcon('Resources/mail.ico'),  # Icon type (Information, Warning, Critical)
+            5000  # Duration in milliseconds
+        )
 
     def inject_javascript(self):
         # JavaScript to auto-allow notifications
@@ -214,7 +199,7 @@ if __name__ == "__main__":
     # from PySide6 import QtNetwork
     # proxy = QtNetwork.QNetworkProxy()
     # proxy.setType(QtNetwork.QNetworkProxy.ProxyType.Socks5Proxy)
-    # proxy.setHostName("1.1.1.1")
+    # proxy.setHostName("192.168.1.163")
     # proxy.setPort(1080)
     # QtNetwork.QNetworkProxy.setApplicationProxy(proxy)
     window = ProtonMail()
