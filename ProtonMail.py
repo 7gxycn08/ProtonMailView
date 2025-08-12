@@ -4,10 +4,9 @@ import traceback
 from PySide6.QtGui import QIcon, QAction
 from PySide6.QtCore import QUrl, Slot, Qt
 from PySide6.QtWebEngineCore import (QWebEngineSettings, QWebEngineProfile, QWebEnginePage,
-                                     QWebEngineNotification, QWebEngineDownloadRequest)
+                                     QWebEngineNotification, QWebEngineDownloadRequest, QWebEnginePermission)
 from PySide6.QtWebEngineWidgets import QWebEngineView
-from PySide6.QtWidgets import (QApplication, QMainWindow, QSystemTrayIcon, QMenu, QFileDialog, QTextEdit, QVBoxLayout,
-                               QDialog)
+from PySide6.QtWidgets import (QApplication, QMainWindow, QSystemTrayIcon, QMenu, QFileDialog)
 import ctypes
 import sys
 
@@ -25,13 +24,14 @@ class CustomWebEnginePage(QWebEnginePage):
         self.new_webview.page().action(self.new_webview.page().WebAction.Copy).setVisible(True)
         self.new_webview.page().action(self.new_webview.page().WebAction.Paste).setVisible(True)
         self.new_webview.setZoomFactor(0.7)
-        self.popup_dialog.setWindowTitle("ProtonMailView v1.1")
+        self.popup_dialog.setWindowTitle("ProtonMailView v1.2")
         self.popup_dialog.setWindowIcon(QIcon('Resources/mail.ico'))
         self.popup_dialog.setCentralWidget(self.new_webview)
         self.popup_dialog.setGeometry(450, 200, 900, 600)
         self.popup_dialog.show()
 
         return self.new_webview.page()
+
 
 class ProtonMail(QMainWindow):
     def __init__(self):
@@ -51,23 +51,24 @@ class ProtonMail(QMainWindow):
 
             self.setGeometry(450, 200, 900, 600)
             self.setWindowIcon(QIcon('Resources/mail.ico'))
-            self.setWindowTitle('ProtonMailView v1.1')
-            self.profile = QWebEngineProfile('ProtonMailProfile', self)
+            self.setWindowTitle('ProtonMailView v1.2')
+            self.profile = QWebEngineProfile('ProtonMailProfile')
             self.profile.setPersistentStoragePath(fr"C:/Users/{os.getlogin()}/AppData/Local/ProtonMail")
             self.profile.setNotificationPresenter(self.handle_notification)
             self.profile.downloadRequested.connect(self.on_download_requested)
             self.settings = self.profile.settings()
+
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptEnabled, True)
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.WebRTCPublicInterfacesOnly, True)
-            # self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanOpenWindows, True)
+
             self.web_view = QWebEngineView(self)
             self.web_view.setPage(CustomWebEnginePage(self.profile, self.web_view))
             self.setCentralWidget(self.web_view)
             self.url = QUrl("https://mail.protonmail.com")
             self.web_view.load(self.url)
-            self.web_view.loadFinished.connect(self.inject_javascript)
-            self.web_view.page().featurePermissionRequested.connect(self.on_feature_permission_requested)
+            self.web_view.page().loadFinished.connect(self.inject_javascript)
+            self.web_view.page().permissionRequested.connect(self.on_permission_requested)
 
             self.web_view.setZoomFactor(0.7)
             self.web_view.setContextMenuPolicy(Qt.ContextMenuPolicy.DefaultContextMenu)
@@ -79,9 +80,8 @@ class ProtonMail(QMainWindow):
             self.web_view.page().action(self.web_view.page().WebAction.OpenLinkInNewTab).setVisible(False)
             self.web_view.page().action(self.web_view.page().WebAction.OpenLinkInNewWindow).setVisible(True)
             self.web_view.page().action(self.web_view.page().WebAction.SavePage).setVisible(False)
-            self.web_view.page().action(self.web_view.page().WebAction.ViewSource).setVisible(False)
+            self.web_view.page().action(self.web_view.page().WebAction.ViewSource).setVisible(True)
 
-            self.connect_view_source_action()
             self.tray_icon = QSystemTrayIcon()
             self.tray_icon.setToolTip("ProtonMailView")
             self.tray_icon.setIcon(QIcon("Resources/mail.ico"))
@@ -99,60 +99,26 @@ class ProtonMail(QMainWindow):
             self.tray_menu.addAction(self.quit_action)
 
             self.tray_icon.setContextMenu(self.tray_menu)
-
             self.tray_icon.show()
             self.show()
         except Exception as e:
             traceback.print_exception(e)
 
-    def on_feature_permission_requested(self, url, feature):
-        # Check if the requested feature is notifications
-        if feature == QWebEnginePage.Feature.Notifications:
-            # Grant permission for notifications
-            (self.web_view.page()
-             .setFeaturePermission(url, feature, QWebEnginePage.PermissionPolicy.PermissionGrantedByUser))
+    def on_permission_requested(self, permission: QWebEnginePermission):
+        # permission is a QWebEnginePermission object (has permissionType(), grant(), deny())
+        if permission.permissionType() == QWebEnginePermission.PermissionType.Notifications:
+            print("Granting notifications for", permission.origin().toString())
+            permission.grant()
+        else:
+            permission.deny()
 
-    def connect_view_source_action(self):
-        """Ensure the 'View Source' action is connected to a custom function."""
-        # Get the 'View Source' action from the web page
-        view_source_action = self.web_view.page().action(self.web_view.page().WebAction.ViewSource)
-
-        # Make sure the action is visible
-        if view_source_action:
-            view_source_action.setVisible(True)  # Make sure it's visible in the context menu
-
-            # Connect the 'triggered' signal of the action to the 'view_source' method
-            view_source_action.triggered.connect(self.view_source)
-
-    def view_source(self):
-        """Open the page source in a dialog."""
-        # Get the page source (HTML) via JavaScript
-        self.web_view.page().toHtml(self.show_source)
-
-    def show_source(self, html):
-        """Show the HTML source in a new dialog."""
-        dialog = QDialog(self)
-        dialog.setWindowTitle("Page Source")
-        layout = QVBoxLayout(dialog)
-
-        # Create a QTextEdit to display the HTML source
-        text_edit = QTextEdit(dialog)
-        text_edit.setPlainText(html)
-        text_edit.setReadOnly(True)
-
-        layout.addWidget(text_edit)
-
-        dialog.setLayout(layout)
-        dialog.resize(800, 600)
-        dialog.exec()
 
     @Slot(str)
     def redirect_callback(self, url):
         self.url = QUrl(url)
         self.web_view.load(self.url)
 
-    @staticmethod
-    def about_page():
+    def about_page(self):
         url = "https://github.com/7gxycn08/ProtonMailView"
         subprocess.Popen(f"start {url}", shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
 
