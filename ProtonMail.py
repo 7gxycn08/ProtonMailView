@@ -2,13 +2,14 @@ import os
 import subprocess
 import traceback
 from PySide6.QtGui import QIcon, QAction
-from PySide6.QtCore import QUrl, Slot, Qt
+from PySide6.QtCore import QUrl, Slot, Qt, QThread, Signal
 from PySide6.QtWebEngineCore import (QWebEngineSettings, QWebEngineProfile, QWebEnginePage,
                                      QWebEngineNotification, QWebEngineDownloadRequest, QWebEnginePermission)
 from PySide6.QtWebEngineWidgets import QWebEngineView
 from PySide6.QtWidgets import (QApplication, QMainWindow, QSystemTrayIcon, QMenu, QFileDialog)
 import ctypes
 import sys
+from pynput import mouse
 
 class CustomWebEnginePage(QWebEnginePage):
     def __init__(self, profile, parent=None):
@@ -32,8 +33,8 @@ class CustomWebEnginePage(QWebEnginePage):
 
         return self.new_webview.page()
 
-
 class ProtonMail(QMainWindow):
+    adjust_zoom = Signal()
     def __init__(self):
         super().__init__()
         try:
@@ -47,8 +48,9 @@ class ProtonMail(QMainWindow):
                 set_dpi_aware.argtypes = []  # No arguments for this function
 
                 # Call the function
-                set_dpi_aware()  # Now the function can be called correctly
-
+                set_dpi_aware()  # Now the function can be called without warnings
+            self.adjust_zoom.connect(self.zoom_adjust, Qt.ConnectionType.QueuedConnection)
+            self.shutting_down = False
             self.setGeometry(450, 200, 900, 600)
             self.setWindowIcon(QIcon('Resources/mail.ico'))
             self.setWindowTitle('ProtonMailView v1.2')
@@ -62,8 +64,8 @@ class ProtonMail(QMainWindow):
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.JavascriptCanAccessClipboard, True)
             self.settings.setAttribute(QWebEngineSettings.WebAttribute.WebRTCPublicInterfacesOnly, True)
 
-            self.web_view = QWebEngineView(self)
-            self.web_view.setPage(CustomWebEnginePage(self.profile, self.web_view))
+            self.web_view = QWebEngineView()
+            self.web_view.setPage(CustomWebEnginePage(self.profile))
             self.setCentralWidget(self.web_view)
             self.url = QUrl("https://mail.protonmail.com")
             self.web_view.load(self.url)
@@ -86,7 +88,7 @@ class ProtonMail(QMainWindow):
             self.tray_icon.setToolTip("ProtonMailView")
             self.tray_icon.setIcon(QIcon("Resources/mail.ico"))
             self.tray_icon.activated.connect(
-                lambda reason: self.show() if reason == QSystemTrayIcon.ActivationReason.DoubleClick else None)
+                lambda reason: self.show() if reason == QSystemTrayIcon.ActivationReason.Trigger else None)
             if self.tray_icon is not None:
                 self.tray_icon.hide()
             self.tray_menu = QMenu(self)
@@ -95,29 +97,50 @@ class ProtonMail(QMainWindow):
             self.tray_menu.addAction(self.restore_action)
 
             self.quit_action = QAction("Quit", self)
-            self.quit_action.triggered.connect(QApplication.instance().quit)
-            self.tray_menu.addAction(self.quit_action)
+            self.quit_action.triggered.connect(self.exiting_application)
 
+            self.listener = mouse.Listener(on_click=self.on_click)
+            self.custom_zoom_thread = QThread()
+            self.custom_zoom_thread.run = self.mouse_click_listener
+            self.custom_zoom_thread.start()
+
+            self.tray_menu.addAction(self.quit_action)
             self.tray_icon.setContextMenu(self.tray_menu)
             self.tray_icon.show()
             self.show()
         except Exception as e:
             traceback.print_exception(e)
 
-    def on_permission_requested(self, permission: QWebEnginePermission):
+    def zoom_adjust(self):
+        self.web_view.setZoomFactor(0.71)
+        self.web_view.setZoomFactor(0.7)
+
+    def exiting_application(self):
+        self.listener.stop()
+        QApplication.exit()
+
+    def on_click(self, x, y, button, pressed):
+        if pressed:
+            self.adjust_zoom.emit()
+
+    def mouse_click_listener(self,):
+        self.listener.start()
+        self.listener.join()
+
+    @staticmethod
+    def on_permission_requested(permission: QWebEnginePermission):
         # permission is a QWebEnginePermission object (has permissionType(), grant(), deny())
         if permission.permissionType() == QWebEnginePermission.PermissionType.Notifications:
-            print("Granting notifications for", permission.origin().toString())
             permission.grant()
         else:
             permission.deny()
-
 
     @Slot(str)
     def redirect_callback(self, url):
         self.url = QUrl(url)
         self.web_view.load(self.url)
 
+    @staticmethod
     def about_page(self):
         url = "https://github.com/7gxycn08/ProtonMailView"
         subprocess.Popen(f"start {url}", shell=True, creationflags=subprocess.CREATE_NO_WINDOW)
