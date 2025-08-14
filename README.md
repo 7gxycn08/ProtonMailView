@@ -13,7 +13,7 @@ Built with Electron, designed for a distraction-free inbox.
 - **Startup ready** — Optional background launch on boot.  
 - **Native notifications** — Get alerts for new emails while the app is hidden in tray.  
 - **Fast file handling** — Download attachments directly from your inbox.  
-- **Same official tech** — Made using Electron just like the official ProtonMail app.  
+- **Same official tech** — Made using Electron just like the official ProtonMail app and It's free.  
 - **Open source** — Transparent code under the Apache 2.0 License.
 
 ---
