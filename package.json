@@ -1,0 +1,39 @@
+{
+  "name": "protonmail",
+  "version": "1.1.0",
+  "description": "Proton Mail Web Client",
+  "main": "main.js",
+  "type": "commonjs",
+  "scripts": {
+    "start": "electron .",
+    "dist": "electron-builder"
+  },
+  "build": {
+    "files": [
+      "**/*",
+      "assets/**/*"
+    ],
+    "appId": "ProtonMail",
+    "productName": "ProtonMail",
+    "directories": {
+      "buildResources": "assets"
+    },
+    "win": {
+      "icon": "assets/mail.ico"
+    }
+  },
+  "keywords": [],
+  "author": "7gxycn08@github.com",
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^37.2.6",
+    "electron-builder": "^26.0.12"
+  },
+  "dependencies": {
+    "conf": "^14.0.0",
+    "electron-store": "^10.1.0",
+    "jsonfile": "^6.2.0",
+    "node-persist": "^4.0.4",
+    "windows-shortcuts": "^0.1.6"
+  }
+}
