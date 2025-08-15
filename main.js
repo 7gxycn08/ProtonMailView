@@ -8,7 +8,7 @@ const exePath = process.execPath;
 const fs = require('fs');
 const ws = require('windows-shortcuts');
 
-//app.commandLine.appendSwitch('proxy-server', 'socks5://127.0.0.1:1080'); // your SOCKS5 proxy
+//app.commandLine.appendSwitch('proxy-server', 'socks5://127.0.0.1:1080'); // specify socks5 proxy to connect through it 
 app.commandLine.appendSwitch(
   'force-webrtc-ip-handling-policy',
   'default_public_interface_only'
@@ -71,15 +71,15 @@ function createWindow() {
     webPreferences: {
       contextIsolation: true,
       nodeIntegration: false,
-      zoomFactor: 0.7, // Set zoom factor to 125%
+      zoomFactor: 0.7, // Set zoom factor
       javascript: true, // JavaScript enabled by default
     }
   });
-  mainWindow.webContents.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36")
+  mainWindow.webContents.setUserAgent("Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/139.0.0.0 Safari/537.36") //specify user agent to use
   session.defaultSession.setPermissionRequestHandler((webContents, permission, callback) => {
     console.log('Permission requested:', permission);
 
-    // Example: allow notifications only for a specific domain
+    // Example: allow notifications permission
     if (permission === 'notifications') {
       return callback(true);
     }
@@ -144,3 +144,4 @@ app.whenReady().then(() => {
 app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) createWindow();
 });
+
